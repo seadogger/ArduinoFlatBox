@@ -1,14 +1,18 @@
-## What 
-LEDLightBoxAlnitak - PC controlled lightbox implmented using the Alnitak (Flip-Flat/Flat-Man) command set found here: https://www.optecinc.com/astronomy/catalog/alnitak/resources/Alnitak_GenericCommandsR4.pdf
+# ArduinoFlatBox
+
+ArduinoFlatBox - PC controlled lightbox implmented using the Alnitak (Flip-Flat/Flat-Man) command set found here: https://www.optecinc.com/astronomy/catalog/alnitak/resources/Alnitak_GenericCommandsR4.pdf
 
 ## Who
+
 * Created By: Jared Wellman - jared@mainsequencesoftware.com here https://github.com/jwellman80/ArduinoLightbox
 * Adapted to V4 protocol, motor handling added By: Igor von Nyssen - igor@vonnyssen.com
-
+* Modified to work with servo motors by Marco Cipriani, (GitHub @marcocipriani01)
 
 ## When
-  Last modified:  2020-01-19
 
+  Last modified:  2020/December/06
+
+## Usage
 Typical usage on the command prompt below. Please note that commands end in CR '\r' and responses end in LF '\n'. Neither end in both, so do not use Serial.println. The character in `OOO` is the letter O, not the digit 0.
 
 ```
@@ -24,9 +28,4 @@ Send     : ">DOOO\r"      //turn light off (brightness value does not change, ju
 Recieve  : "*D19OOO\n"    //confirms light turned off
 ```
 
-Tested with this stepper motor: https://smile.amazon.com/gp/product/B01CP18J4A
-and these boards
-* Arduino Uno - https://smile.amazon.com/gp/product/B01EWOE0UU
-* Arduino Leonardo - https://smile.amazon.com/gp/product/B00R237VGO
-
-and NINA imaging software: https://nighttime-imaging.eu
+Tested with an Arduino Nano and the NINA imaging software (https://nighttime-imaging.eu)

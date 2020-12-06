@@ -1,15 +1,15 @@
 /*
-  What: LEDLightBoxAlnitak - PC controlled lightbox implmented using the
+  What: ArduinoFlatBox - PC controlled lightbox implmented using the
   Alnitak (Flip-Flat/Flat-Man) command set found here:
   https://www.optecinc.com/astronomy/catalog/alnitak/resources/Alnitak_GenericCommandsR4.pdf
 
   Who:
   Created By: Jared Wellman - jared@mainsequencesoftware.com
   Adapted to V4 protocol, motor handling added By: Igor von Nyssen - igor@vonnyssen.com
+  Modified to work with servo motors by Marco Cipriani, (GitHub @marcocipriani01)
 
   When:
-  Last modified:  2020/January/19
-
+  Last modified:  2020/December/06
 
   Typical usage on the command prompt:
   Send     : >SOOO\r      //request state
@@ -27,22 +27,14 @@
   Send     : >DOOO\r      //turn light off (brightness value should not be changed)
   Recieve  : *D19OOO\n    //confirms light turned off.
 
-  Tested with this stepper motor: https://smile.amazon.com/gp/product/B01CP18J4A/ref=ppx_yo_dt_b_search_asin_title?ie=UTF8&psc=1
-  and these boards
-   Arduino Uno - https://smile.amazon.com/gp/product/B01EWOE0UU/ref=ppx_yo_dt_b_search_asin_title?ie=UTF8&psc=1
-   Arduino Leonardo - https://smile.amazon.com/gp/product/B00R237VGO/ref=ppx_yo_dt_b_search_asin_title?ie=UTF8&psc=1
-
-  and NINA imaging software: https://nighttime-imaging.eu
+  Tested with an Arduino Nano and the NINA imaging software (https://nighttime-imaging.eu)
 */
 
-#include <Stepper.h>
+#include <Servo.h>
 
-#define STEPS 2038 // steps per revolution for the motor
-#define RPMS 1 // desired motor speed
+Servo myservo;
 
-Stepper stepper(STEPS, 8, 10, 9, 11); //adjust to the pin sequence for your motor
-
-volatile int ledPin = 13;      // the pin that the LED is attached to, needs to be a PWM pin.
+volatile int ledPin = 6;
 int brightness = 0;
 
 enum devices {
@@ -75,22 +67,19 @@ enum motorDirection {
   NONE
 };
 
-
 int deviceId = FLIP_FLAT; //set this to FLAT_MAN if you want to remove or not use the motor handling
 int motorStatus = STOPPED;
 int lightStatus = OFF;
-int coverStatus = CLOSED;
+int coverStatus = NEITHER_OPEN_NOR_CLOSED;
 float targetAngle = 0.0;
 float currentAngle = 0.0;
 int motorDirection = NONE;
 
 void setup() {
-  // initialize the serial communication:
   Serial.begin(9600);
-  // initialize the ledPin as an output:
   pinMode(ledPin, OUTPUT);
   analogWrite(ledPin, 0);
-  stepper.setSpeed(RPMS);
+  myservo.attach(9);
 }
 
 void loop() {
@@ -98,13 +87,11 @@ void loop() {
   handleMotor();
 }
 
-
 void handleSerial() {
-  if ( Serial.available() >= 6 ) { // all incoming communications are fixed length at 6 bytes including the \n
+  if (Serial.available() >= 6) { // all incoming communications are fixed length at 6 bytes including the \n
     char* cmd;
     char* data;
     char temp[10];
-
     int len = 0;
 
     char str[20];
@@ -114,14 +101,7 @@ void handleSerial() {
     cmd = str + 1;
     data = str + 2;
 
-    // useful for debugging to make sure your commands came through and are parsed correctly.
-    if ( false ) {
-      sprintf( temp, "cmd = >%c%s\n", cmd, data);
-      Serial.write(temp);
-    }
-
-    switch ( *cmd )
-    {
+    switch (*cmd) {
       /*
         Ping device
         Request: >POOO\r
@@ -146,7 +126,6 @@ void handleSerial() {
         setShutter(OPEN);
         Serial.write(temp);
         break;
-
 
       /*
         Close shutter
@@ -198,9 +177,10 @@ void handleSerial() {
       */
       case 'B':
         brightness = atoi(data);
-        if ( lightStatus == ON )
+        if (lightStatus == ON) {
           analogWrite(ledPin, brightness);
-        sprintf( temp, "*B%d%03d\n", deviceId, brightness );
+        }
+        sprintf(temp, "*B%d%03d\n", deviceId, brightness );
         Serial.write(temp);
         break;
 
@@ -212,7 +192,7 @@ void handleSerial() {
          yyy = current brightness value from 000-255
       */
       case 'J':
-        sprintf( temp, "*J%d%03d\n", deviceId, brightness);
+        sprintf(temp, "*J%d%03d\n", deviceId, brightness);
         Serial.write(temp);
         break;
 
@@ -226,7 +206,7 @@ void handleSerial() {
          C  = Cover Status( 0 moving, 1 closed, 2 open, 3 timed out)
       */
       case 'S':
-        sprintf( temp, "*S%d%d%d%d\n", deviceId, motorStatus, lightStatus, coverStatus);
+        sprintf(temp, "*S%d%d%d%d\n", deviceId, motorStatus, lightStatus, coverStatus);
         Serial.write(temp);
         break;
 
@@ -241,48 +221,40 @@ void handleSerial() {
         Serial.write(temp);
         break;
     }
-
-    while ( Serial.available() > 0 ) {
-      Serial.read();
-    }
   }
 }
 
-void setShutter(int val)
-{
-  if ( val == OPEN && coverStatus != OPEN )
-  {
+void setShutter(int val) {
+  if ( val == OPEN && coverStatus != OPEN ) {
     motorDirection = OPENING;
-    targetAngle = 90.0;
-  }
-  else if ( val == CLOSED && coverStatus != CLOSED )
-  {
-    motorDirection = CLOSING;
     targetAngle = 0.0;
+  } else if ( val == CLOSED && coverStatus != CLOSED ) {
+    motorDirection = CLOSING;
+    targetAngle = 180.0;
   }
 }
 
-void handleMotor()
-{
-  if (currentAngle < targetAngle && motorDirection == OPENING) {
+void handleMotor() {
+  if ((currentAngle > targetAngle) && (motorDirection == OPENING)) {
     motorStatus = RUNNING;
     coverStatus = NEITHER_OPEN_NOR_CLOSED;
-    stepper.step(1);
-    currentAngle = currentAngle + 360.0 / STEPS;
-    if (currentAngle >= targetAngle) {
+    myservo.write(currentAngle--);
+    if (currentAngle <= targetAngle) {
       motorStatus = STOPPED;
       motorDirection = NONE;
       coverStatus = OPEN;
     }
-  } else if (currentAngle > targetAngle && motorDirection == CLOSING) {
+    delay(15);
+
+  } else if ((currentAngle < targetAngle) && (motorDirection == CLOSING)) {
     motorStatus = RUNNING;
     coverStatus = NEITHER_OPEN_NOR_CLOSED;
-    stepper.step(-1);
-    currentAngle = currentAngle - 360.0 / STEPS;
-    if (currentAngle <= targetAngle) {
+    myservo.write(currentAngle++);
+    if (currentAngle >= targetAngle) {
       motorStatus = STOPPED;
       motorDirection = NONE;
       coverStatus = CLOSED;
     }
+    delay(15);
   }
 }
