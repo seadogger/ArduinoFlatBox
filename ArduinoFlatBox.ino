@@ -35,6 +35,8 @@
 Servo myservo;
 
 volatile int ledPin = 6;
+volatile int switchPin = 10;
+boolean lastSwitchState = LOW;
 int brightness = 0;
 
 enum devices {
@@ -78,13 +80,23 @@ int motorDirection = NONE;
 void setup() {
   Serial.begin(9600);
   pinMode(ledPin, OUTPUT);
+  pinMode(switchPin, INPUT);
   analogWrite(ledPin, 0);
-  myservo.attach(9);
+  //myservo.attach(9);
 }
 
 void loop() {
   handleSerial();
   handleMotor();
+  boolean currentSwitchState = digitalRead(switchPin);
+  if (currentSwitchState != lastSwitchState) {
+    lastSwitchState = currentSwitchState;
+    if (currentSwitchState) {
+      myservo.attach(9);
+    } else {
+      myservo.detach();
+    }
+  }
 }
 
 void handleSerial() {
@@ -92,7 +104,6 @@ void handleSerial() {
     char* cmd;
     char* data;
     char temp[10];
-    int len = 0;
 
     char str[20];
     memset(str, 0, 20);
