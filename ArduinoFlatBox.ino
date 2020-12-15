@@ -30,14 +30,17 @@
   Tested with an Arduino Nano and the NINA imaging software (https://nighttime-imaging.eu)
 */
 
+#define LED_PIN 6
+#define SWITCH_PIN 10
+#define SERVO_PIN 9
+#define CLOSED_ANGLE 180
+#define OPEN_ANGLE 0
+#define SERVO_DELAY 15
+#define SERVO_INITIAL_WAIT 2000
+
 #include <Servo.h>
 
 Servo myservo;
-
-volatile int ledPin = 6;
-volatile int switchPin = 10;
-boolean lastSwitchState = LOW;
-int brightness = 0;
 
 enum devices {
   FLAT_MAN_L = 10,
@@ -71,28 +74,34 @@ enum motorDirection {
 
 int deviceId = FLIP_FLAT; //set this to FLAT_MAN if you want to remove or not use the motor handling
 int motorStatus = STOPPED;
-int lightStatus = OFF;
-int coverStatus = NEITHER_OPEN_NOR_CLOSED;
-float targetAngle = 0.0;
-float currentAngle = 0.0;
+int coverStatus = CLOSED;
 int motorDirection = NONE;
+int targetAngle = CLOSED_ANGLE;
+int currentAngle = CLOSED_ANGLE;
+int lightStatus = OFF;
+int brightness = 0;
+boolean lastSwitchState = LOW;
+boolean currentSwitchState = LOW;
 
 void setup() {
   Serial.begin(9600);
-  pinMode(ledPin, OUTPUT);
-  pinMode(switchPin, INPUT);
-  analogWrite(ledPin, 0);
-  //myservo.attach(9);
+  pinMode(LED_PIN, OUTPUT);
+  pinMode(SWITCH_PIN, INPUT);
+  analogWrite(LED_PIN, 0);
+  myservo.attach(SERVO_PIN);
+  myservo.write(180);
+  delay(SERVO_INITIAL_WAIT);
+  myservo.detach();
 }
 
 void loop() {
   handleSerial();
   handleMotor();
-  boolean currentSwitchState = digitalRead(switchPin);
+  currentSwitchState = digitalRead(SWITCH_PIN);
   if (currentSwitchState != lastSwitchState) {
     lastSwitchState = currentSwitchState;
     if (currentSwitchState) {
-      myservo.attach(9);
+      myservo.attach(SERVO_PIN);
     } else {
       myservo.detach();
     }
@@ -162,7 +171,7 @@ void handleSerial() {
         sprintf(temp, "*L%dOOO\n", deviceId);
         Serial.write(temp);
         lightStatus = ON;
-        analogWrite(ledPin, brightness);
+        analogWrite(LED_PIN, brightness);
         break;
 
       /*
@@ -175,7 +184,7 @@ void handleSerial() {
         sprintf(temp, "*D%dOOO\n", deviceId);
         Serial.write(temp);
         lightStatus = OFF;
-        analogWrite(ledPin, 0);
+        analogWrite(LED_PIN, 0);
         break;
 
       /*
@@ -189,7 +198,7 @@ void handleSerial() {
       case 'B':
         brightness = atoi(data);
         if (lightStatus == ON) {
-          analogWrite(ledPin, brightness);
+          analogWrite(LED_PIN, brightness);
         }
         sprintf(temp, "*B%d%03d\n", deviceId, brightness );
         Serial.write(temp);
@@ -236,12 +245,13 @@ void handleSerial() {
 }
 
 void setShutter(int val) {
-  if ( val == OPEN && coverStatus != OPEN ) {
+  if (!currentSwitchState) return;
+  if (val == OPEN && coverStatus != OPEN) {
     motorDirection = OPENING;
-    targetAngle = 0.0;
-  } else if ( val == CLOSED && coverStatus != CLOSED ) {
+    targetAngle = OPEN_ANGLE;
+  } else if (val == CLOSED && coverStatus != CLOSED) {
     motorDirection = CLOSING;
-    targetAngle = 180.0;
+    targetAngle = CLOSED_ANGLE;
   }
 }
 
@@ -249,23 +259,23 @@ void handleMotor() {
   if ((currentAngle > targetAngle) && (motorDirection == OPENING)) {
     motorStatus = RUNNING;
     coverStatus = NEITHER_OPEN_NOR_CLOSED;
-    myservo.write(currentAngle--);
+    myservo.write(--currentAngle);
     if (currentAngle <= targetAngle) {
       motorStatus = STOPPED;
       motorDirection = NONE;
       coverStatus = OPEN;
     }
-    delay(15);
+    delay(SERVO_DELAY);
 
   } else if ((currentAngle < targetAngle) && (motorDirection == CLOSING)) {
     motorStatus = RUNNING;
     coverStatus = NEITHER_OPEN_NOR_CLOSED;
-    myservo.write(currentAngle++);
+    myservo.write(++currentAngle);
     if (currentAngle >= targetAngle) {
       motorStatus = STOPPED;
       motorDirection = NONE;
       coverStatus = CLOSED;
     }
-    delay(15);
+    delay(SERVO_DELAY);
   }
 }
