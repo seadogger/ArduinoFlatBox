@@ -30,7 +30,14 @@
   Tested with an Arduino Nano and the NINA imaging software (https://nighttime-imaging.eu)
 */
 
-#include "main.h"
+#define LED_PIN 6
+#define SERVO_PIN 5
+#define CLOSED_ANGLE 180
+#define OPEN_ANGLE 0
+#define SERVO_DELAY 25
+#define SERVO_INITIAL_WAIT 2000
+
+#include <Servo.h>
 
 Servo myservo;
 
@@ -72,32 +79,18 @@ int targetAngle = CLOSED_ANGLE;
 int currentAngle = CLOSED_ANGLE;
 int lightStatus = OFF;
 int brightness = 0;
-boolean lastSwitchState = LOW;
-boolean currentSwitchState = LOW;
 
 void setup() {
   Serial.begin(9600);
   pinMode(LED_PIN, OUTPUT);
-  pinMode(SWITCH_PIN, INPUT);
   analogWrite(LED_PIN, 0);
-  myservo.attach(SERVO_PIN);
+  myservo.attach(SERVO_PIN, 500, 2500);
   myservo.write(180);
-  delay(SERVO_INITIAL_WAIT);
-  myservo.detach();
 }
 
 void loop() {
   handleSerial();
   handleMotor();
-  currentSwitchState = digitalRead(SWITCH_PIN);
-  if (currentSwitchState != lastSwitchState) {
-    lastSwitchState = currentSwitchState;
-    if (currentSwitchState) {
-      myservo.attach(SERVO_PIN);
-    } else {
-      myservo.detach();
-    }
-  }
 }
 
 void handleSerial() {
@@ -120,11 +113,10 @@ void handleSerial() {
         Return : *PiiOOO\n
         id = deviceId
       */
-      case 'P': {
+      case 'P':
         sprintf(temp, "*P%dOOO\n", deviceId);
         Serial.write(temp);
         break;
-      }
 
       /*
         Open shutter
@@ -134,12 +126,12 @@ void handleSerial() {
 
         This command is only supported on the Flip-Flat, set the deviceId accordingly
       */
-      case 'O': {
+      case 'O':
         sprintf(temp, "*O%dOOO\n", deviceId);
         setShutter(OPEN);
         Serial.write(temp);
+        analogWrite(LED_PIN, 0);
         break;
-      }
 
       /*
         Close shutter
@@ -149,12 +141,11 @@ void handleSerial() {
 
         This command is only supported on the Flip-Flat, set the deviceId accordingly
       */
-      case 'C': {
+      case 'C':
         sprintf(temp, "*C%dOOO\n", deviceId);
         setShutter(CLOSED);
         Serial.write(temp);
         break;
-      }
 
       /*
         Turn light on
@@ -162,13 +153,14 @@ void handleSerial() {
         Return : *LiiOOO\n
         id = deviceId
       */
-      case 'L': {
+      case 'L':
         sprintf(temp, "*L%dOOO\n", deviceId);
         Serial.write(temp);
         lightStatus = ON;
-        analogWrite(LED_PIN, brightness);
+        if (coverStatus == CLOSED) {
+          analogWrite(LED_PIN, brightness);
+        }
         break;
-      }
 
       /*
         Turn light off
@@ -176,13 +168,12 @@ void handleSerial() {
         Return : *DiiOOO\n
         id = deviceId
       */
-      case 'D': {
+      case 'D':
         sprintf(temp, "*D%dOOO\n", deviceId);
         Serial.write(temp);
         lightStatus = OFF;
         analogWrite(LED_PIN, 0);
         break;
-      }
 
       /*
         Set brightness
@@ -195,10 +186,10 @@ void handleSerial() {
       case 'B': {
         double db = (double) (atoi(data) - 3);
         brightness = constrain((int) (0.00394 * db * db), 0, 255);
-        if (lightStatus == ON) {
+        if ((lightStatus == ON) && (coverStatus == CLOSED)) {
           analogWrite(LED_PIN, brightness);
         }
-        sprintf(temp, "*B%d%03d\n", deviceId, brightness );
+        sprintf(temp, "*B%d%03d\n", deviceId, brightness);
         Serial.write(temp);
         break;
       }
@@ -210,11 +201,10 @@ void handleSerial() {
         id = deviceId
          yyy = current brightness value from 000-255
       */
-      case 'J': {
+      case 'J':
         sprintf(temp, "*J%d%03d\n", deviceId, brightness);
         Serial.write(temp);
         break;
-      }
 
       /*
         Get device status:
@@ -225,11 +215,10 @@ void handleSerial() {
          L  = light status( 0 off, 1 on)
          C  = Cover Status( 0 moving, 1 closed, 2 open, 3 timed out)
       */
-      case 'S': {
+      case 'S':
         sprintf(temp, "*S%d%d%d%d\n", deviceId, motorStatus, lightStatus, coverStatus);
         Serial.write(temp);
         break;
-      }
 
       /*
         Get firmware version
@@ -237,17 +226,15 @@ void handleSerial() {
         Return : *Vii001\n
         id = deviceId
       */
-      case 'V': {
+      case 'V': // get firmware version
         sprintf(temp, "*V%d003\n", deviceId);
         Serial.write(temp);
         break;
-      }
     }
   }
 }
 
 void setShutter(int val) {
-  if (!currentSwitchState) return;
   if (val == OPEN && coverStatus != OPEN) {
     motorDirection = OPENING;
     targetAngle = OPEN_ANGLE;
@@ -277,6 +264,9 @@ void handleMotor() {
       motorStatus = STOPPED;
       motorDirection = NONE;
       coverStatus = CLOSED;
+      if (lightStatus == ON) {
+        analogWrite(LED_PIN, brightness);
+      }
     }
     delay(SERVO_DELAY);
   }
