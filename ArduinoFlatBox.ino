@@ -9,7 +9,7 @@
   Modified to work with servo motors by Marco Cipriani, (GitHub @marcocipriani01)
 
   When:
-  Last modified:  2020/December/06
+  Last modified:  2021/03/12
 
   Typical usage on the command prompt:
   Send     : >SOOO\r      //request state
@@ -39,7 +39,7 @@
 
 #include <Servo.h>
 
-Servo myservo;
+Servo servo;
 
 enum devices {
   FLAT_MAN_L = 10,
@@ -84,8 +84,8 @@ void setup() {
   Serial.begin(9600);
   pinMode(LED_PIN, OUTPUT);
   analogWrite(LED_PIN, 0);
-  myservo.attach(SERVO_PIN, 500, 2500);
-  myservo.write(180);
+  servo.attach(SERVO_PIN, 500, 2500);
+  servo.write(180);
 }
 
 void loop() {
@@ -185,7 +185,7 @@ void handleSerial() {
       */
       case 'B': {
         double db = (double) (atoi(data) - 3);
-        brightness = constrain((int) (0.00394 * db * db), 0, 255);
+        brightness = constrain((int) (0.00403 * db * db), 0, 255);
         if ((lightStatus == ON) && (coverStatus == CLOSED)) {
           analogWrite(LED_PIN, brightness);
         }
@@ -248,7 +248,7 @@ void handleMotor() {
   if ((currentAngle > targetAngle) && (motorDirection == OPENING)) {
     motorStatus = RUNNING;
     coverStatus = NEITHER_OPEN_NOR_CLOSED;
-    myservo.write(--currentAngle);
+    servo.write(--currentAngle);
     if (currentAngle <= targetAngle) {
       motorStatus = STOPPED;
       motorDirection = NONE;
@@ -259,7 +259,7 @@ void handleMotor() {
   } else if ((currentAngle < targetAngle) && (motorDirection == CLOSING)) {
     motorStatus = RUNNING;
     coverStatus = NEITHER_OPEN_NOR_CLOSED;
-    myservo.write(++currentAngle);
+    servo.write(++currentAngle);
     if (currentAngle >= targetAngle) {
       motorStatus = STOPPED;
       motorDirection = NONE;
