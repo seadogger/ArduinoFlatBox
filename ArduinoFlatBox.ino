@@ -184,8 +184,7 @@ void handleSerial() {
          yyy = value that brightness was set from 000-255
       */
       case 'B': {
-        double db = (double) (atoi(data) - 3);
-        brightness = constrain((int) (0.00403 * db * db), 0, 255);
+        brightness = atoi(data);
         if ((lightStatus == ON) && (coverStatus == CLOSED)) {
           analogWrite(LED_PIN, brightness);
         }
