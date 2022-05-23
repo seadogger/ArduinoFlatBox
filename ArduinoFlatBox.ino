@@ -7,9 +7,10 @@
   Created By: Jared Wellman - jared@mainsequencesoftware.com
   Adapted to V4 protocol, motor handling added By: Igor von Nyssen - igor@vonnyssen.com
   Modified to work with servo motors by Marco Cipriani, (GitHub @marcocipriani01)
+  Modified to work with LDX-227 servo motor,kstars,EKOS by Seadogger, (Github @seadogger)
 
   When:
-  Last modified:  2021/03/12
+  Last modified:  5/8/2022
 
   Typical usage on the command prompt:
   Send     : >SOOO\r      //request state
@@ -28,14 +29,20 @@
   Recieve  : *D19OOO\n    //confirms light turned off.
 
   Tested with an Arduino Nano and the NINA imaging software (https://nighttime-imaging.eu)
+  Tested with an Arduino Nano and the kStars and StellarMate imaging software with Alnitak Flip Flat INDI Driver 
 */
 
-#define LED_PIN 6
-#define SERVO_PIN 5
-#define CLOSED_ANGLE 180
-#define OPEN_ANGLE 0
+#define LED_PIN 3
+#define SERVO_PIN 11
+#define CLOSED_ANGLE 270
+#define OPEN_ANGLE 180
+#define OPEN_PWM 1675
+#define CLOSED_PWM 2400
 #define SERVO_DELAY 25
 #define SERVO_INITIAL_WAIT 2000
+#define STARTUP_DELAY 4000
+#define MINVOLTAGE 110
+#define MAXVOLTAGE 255
 
 #include <Servo.h>
 
@@ -83,9 +90,10 @@ int brightness = 0;
 void setup() {
   Serial.begin(9600);
   pinMode(LED_PIN, OUTPUT);
-  analogWrite(LED_PIN, 0);
-  servo.attach(SERVO_PIN, 500, 2500);
-  servo.write(180);
+  analogWrite(LED_PIN, 255);
+  servo.attach(SERVO_PIN, OPEN_PWM, CLOSED_PWM);
+  servo.writeMicroseconds(CLOSED_PWM);
+  delay(STARTUP_DELAY);
 }
 
 void loop() {
@@ -184,8 +192,13 @@ void handleSerial() {
          yyy = value that brightness was set from 000-255
       */
       case 'B': {
-        double db = (double) (atoi(data) - 3);
+        
+        //EL Panel turns off at about 110 so we cannot go down to 0 so remap the input to this range before converting
+        int tempdata = map(atoi(data), 0, 255, MINVOLTAGE, MAXVOLTAGE);
+        
+        double db = (double) (tempdata - 3);
         brightness = constrain((int) (0.00403 * db * db), 0, 255);
+        
         if ((lightStatus == ON) && (coverStatus == CLOSED)) {
           analogWrite(LED_PIN, brightness);
         }
@@ -248,7 +261,8 @@ void handleMotor() {
   if ((currentAngle > targetAngle) && (motorDirection == OPENING)) {
     motorStatus = RUNNING;
     coverStatus = NEITHER_OPEN_NOR_CLOSED;
-    servo.write(--currentAngle);
+    servo.writeMicroseconds(OPEN_PWM);
+    --currentAngle;
     if (currentAngle <= targetAngle) {
       motorStatus = STOPPED;
       motorDirection = NONE;
@@ -259,7 +273,8 @@ void handleMotor() {
   } else if ((currentAngle < targetAngle) && (motorDirection == CLOSING)) {
     motorStatus = RUNNING;
     coverStatus = NEITHER_OPEN_NOR_CLOSED;
-    servo.write(++currentAngle);
+    servo.writeMicroseconds(CLOSED_PWM);
+    ++currentAngle;
     if (currentAngle >= targetAngle) {
       motorStatus = STOPPED;
       motorDirection = NONE;
