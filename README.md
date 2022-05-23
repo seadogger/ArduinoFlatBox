@@ -47,7 +47,7 @@ Recieve  : "*D19OOO\n"    //confirms light turned off
 |[Servo Motor](https://www.amazon.com/gp/product/B07LF4SGC5/ref=ppx_yo_dt_b_asin_title_o04_s00?ie=UTF8&psc=1)|$19.99|1|
 |[3D Printer PETG Spool](https://www.amazon.com/gp/product/B08PRLJC3S/ref=ppx_yo_dt_b_asin_title_o06_s00?ie=UTF8&th=1)|$23.99|1
 |[Frosted Acrylic Diffuser](https://www.canalplastic.com/collections/acrylic-sheets/products/2447-white-translucent-p95-acrylic-sheet?variant=32918362766)|$9.80|1
-|[Arduino Software](https://github.com/seadogger/ArduinoFlatBox)
+|[Arduino Firmware](https://github.com/seadogger/ArduinoFlatBox)
 |3D Printer Files
 |Build Video
 |Total Cost |$171.24
@@ -80,7 +80,7 @@ Recieve  : "*D19OOO\n"    //confirms light turned off
 ### Test equipment:
 * ATIK 383L+ Mono (Camera has a shutter so I target exposures on my Flats to be no less than 10sec)
 * EFW 7 position filter wheel
-* Optolong LRGB SHO filters 
+* Optolong 36mm LRGB SHO filters 
 
 ### Test 1:  Longest Duration to Create a Common Bin
 |Filter |Shutter Duration |PWM Setting|
