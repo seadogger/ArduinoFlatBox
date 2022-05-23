@@ -1,6 +1,7 @@
-# ArduinoFlatBox
+# ArduinoFlatBox RedCat51
 
 ArduinoFlatBox - PC controlled lightbox implmented using the Alnitak (Flip-Flat/Flat-Man) command set found here: https://www.optecinc.com/astronomy/catalog/alnitak/resources/Alnitak_GenericCommandsR4.pdf
+![Screenshot](IMG_0225.jpeg)
 
 ## Who
 
