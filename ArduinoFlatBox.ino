@@ -39,10 +39,9 @@
 #define OPEN_PWM 1675
 #define CLOSED_PWM 2400
 #define SERVO_DELAY 25
-#define SERVO_INITIAL_WAIT 2000
-#define STARTUP_DELAY 4000
-#define MINVOLTAGE 110
-#define MAXVOLTAGE 255
+#define STARTUP_DELAY 2000
+//#define MINVOLTAGE 110
+//#define MAXVOLTAGE 255
 
 #include <Servo.h>
 
@@ -90,7 +89,7 @@ int brightness = 0;
 void setup() {
   Serial.begin(9600);
   pinMode(LED_PIN, OUTPUT);
-  analogWrite(LED_PIN, 255);
+  analogWrite(LED_PIN, brightness);
   servo.attach(SERVO_PIN, OPEN_PWM, CLOSED_PWM);
   servo.writeMicroseconds(CLOSED_PWM);
   delay(STARTUP_DELAY);
@@ -193,11 +192,13 @@ void handleSerial() {
       */
       case 'B': {
         
-        //EL Panel turns off at about 110 so we cannot go down to 0 so remap the input to this range before converting
-        int tempdata = map(atoi(data), 0, 255, MINVOLTAGE, MAXVOLTAGE);
+//        EL Panel turns off at about 110 so we cannot go down to 0 so remap the input to this range before converting
+//        int tempdata = map(atoi(data), 0, 255, MINVOLTAGE, MAXVOLTAGE);
         
-        double db = (double) (tempdata - 3);
-        brightness = constrain((int) (0.00403 * db * db), 0, 255);
+// Seadogger 5/22/2022 - removed conversion to make brightness linear.  Just want the panel to reflect what we put on the INDI GUI
+//        double db = (double) (tempdata - 3);
+//        brightness = constrain((int) (0.00403 * db * db), 0, 255);
+        brightness = constrain(atoi(data), 0, 255);
         
         if ((lightStatus == ON) && (coverStatus == CLOSED)) {
           analogWrite(LED_PIN, brightness);
